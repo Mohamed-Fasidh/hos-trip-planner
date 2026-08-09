@@ -331,6 +331,7 @@ hos-trip-planner/
 ├── .gitignore
 ├── render.yaml
 └── README.md
+```
 
 ## Backend API
 
