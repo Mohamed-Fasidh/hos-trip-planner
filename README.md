@@ -1125,35 +1125,13 @@ The implementation validates the primary assessment requirements through automat
 | Cycle restart handling | Implemented |
 | Pickup | Implemented |
 | Drop-off | Implemented |
-| Fuel interval | 950-mile internal threshold |
+| Fuel interval | Implemented |
 | Multi-day itinerary | Implemented |
 | Daily logs | Implemented |
 | Digital RODS-style sheet | Implemented |
 | Route visualization | Implemented |
 | Print/PDF | Implemented |
 | Automated tests | Implemented |
-
----
-
-## Known Limitations
-
-This project intentionally focuses on the requirements defined by the assessment.
-
-It does not attempt to implement every possible FMCSA exception or every feature of a commercial ELD platform.
-
-Examples include:
-
-- Sleeper-berth split rules
-- Adverse driving conditions
-- Short-haul exceptions
-- 16-hour short-haul exception
-- Real-time traffic routing
-- ELD hardware integration
-- Real-time driver status synchronization
-- Fleet management
-- Electronic signature workflows
-- Production-grade routing infrastructure
-- Regulatory rule version management
 
 ---
 
