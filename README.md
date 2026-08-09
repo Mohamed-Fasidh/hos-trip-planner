@@ -399,7 +399,7 @@ Pickup service time is inserted between the two route legs.
 ### Clone the Repository
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone https://github.com/Mohamed-Fasidh/hos-trip-planner
 cd hos-trip-planner
 ```
 
