@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: hos-trip-planner-api
+    runtime: docker
+    rootDir: backend
+    healthCheckPath: /api/health/
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "true"
