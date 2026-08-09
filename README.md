@@ -344,7 +344,7 @@ The Django backend exposes a JSON API for generating an HOS-aware trip plan.
   "current_location": "Chicago, IL",
   "pickup_location": "Dallas, TX",
   "dropoff_location": "Phoenix, AZ",
-  "cycle_hours": 65
+  "current_cycle_used": 65
 }
 ```
 
