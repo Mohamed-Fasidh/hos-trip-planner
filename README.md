@@ -1118,28 +1118,7 @@ The implementation includes automated tests covering the primary assessment requ
 | Print/PDF | Implemented |
 | Automated tests | **200 unique tests** |
 
-## Known Limitations
-
-This project intentionally focuses on the requirements defined by the assessment.
-
-It does not attempt to implement every possible FMCSA exception or every feature of a commercial ELD platform.
-
-Examples include:
-
-- Sleeper-berth split rules
-- Adverse driving conditions
-- Short-haul exceptions
-- 16-hour short-haul exception
-- Real-time traffic routing
-- ELD hardware integration
-- Real-time driver status synchronization
-- Fleet management
-- Electronic signature workflows
-- Production-grade routing infrastructure
-- Regulatory rule version management
-
 ---
-
 ## Future Improvements
 
 Potential future improvements include:
