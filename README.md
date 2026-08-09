@@ -286,32 +286,51 @@ Digital RODS-style Logs
 ```text
 hos-trip-planner/
 ├── backend/
-│   ├── planner/
-│   │   ├── tests/
-│   │   │   └── test_hos.py
-│   │   ├── hos.py
+│   ├── .venv/
+│   ├── config/
+│   │   ├── __pycache__/
+│   │   ├── __init__.py
+│   │   ├── settings.py
 │   │   ├── urls.py
+│   │   └── wsgi.py
+│   │
+│   ├── planner/
+│   │   ├── __pycache__/
+│   │   ├── tests/
+│   │   │   ├── __pycache__/
+│   │   │   ├── __init__.py
+│   │   │   └── test_hos.py
+│   │   │
+│   │   ├── __init__.py
+│   │   ├── hos.py
+│   │   ├── routing.py
 │   │   └── views.py
-│   ├── manage.py
-│   ├── requirements.txt
+│   │
+│   ├── db.sqlite3
 │   ├── Dockerfile
-│   └── .env.example
+│   ├── manage.py
+│   └── requirements.txt
+│
+├── docs/
+│   └── HOS_RULES.md
 │
 ├── frontend/
+│   ├── node_modules/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── package.json
+│   │   ├── main.jsx
+│   │   └── styles.css
+│   │
+│   ├── .env.example
+│   ├── .env.local
+│   ├── index.html
+│   ├── log-template.png
 │   ├── package-lock.json
-│   ├── vite.config.js
-│   └── .env.example
+│   ├── package.json
+│   └── vercel.json
 │
+├── .gitignore
 ├── render.yaml
-├── README.md
-└── .gitignore
-```
+└── README.md
 
 ## Backend API
 
