@@ -10,7 +10,7 @@ Django REST-style backend
 
 React + Vite frontend
 
-HOS-aware deterministic scheduling
+Deterministic HOS scheduling
 
 11-hour driving limit
 
@@ -62,19 +62,23 @@ Running the Application
 
 Testing
 
+Daily Log Generation
+
+External Mapping Services
+
 Production Build
 
 Deployment
-
-Daily Log Generation
-
-External Services
 
 Security Considerations
 
 Known Scope Limitations
 
 Assessment Validation
+
+Engineering Design
+
+Assessment Deliverables
 
 Project Overview
 
@@ -97,34 +101,34 @@ Optional trip start datetime
 Processing Pipeline
 
 User Input
-    │
-    ▼
+    |
+    v
 Geocoding
 (Nominatim)
-    │
-    ▼
+    |
+    v
 Road Routing
 (OSRM)
-    │
-    ▼
+    |
+    v
 Route Segments
-    │
-    ▼
+    |
+    v
 HOS Scheduler
-    │
-    ├── Driving
-    ├── Breaks
-    ├── Rest
-    ├── Fuel
-    ├── Pickup
-    ├── Drop-off
-    └── Cycle Management
-    │
-    ▼
+    |
+    +-- Driving
+    +-- Breaks
+    +-- Rest
+    +-- Fuel
+    +-- Pickup
+    +-- Drop-off
+    +-- Cycle Management
+    |
+    v
 Generated Itinerary
-    │
-    ├── Interactive Map
-    └── Daily RODS-Style Logs
+    |
+    +-- Interactive Map
+    +-- Daily RODS-Style Logs
 
 Assessment Scope
 
@@ -232,46 +236,47 @@ The scheduler therefore creates fuel checkpoints at or before every 1,000 route-
 Example:
 
 Start
-  │
-  ├── 1,000 miles → Fuel Stop
-  │
-  ├── 2,000 miles → Fuel Stop
-  │
-  └── 3,000 miles → Fuel Stop
+  |
+  +-- 1,000 miles --> Fuel Stop
+  |
+  +-- 2,000 miles --> Fuel Stop
+  |
+  +-- 3,000 miles --> Fuel Stop
 
 System Architecture
 
-┌──────────────────────────────────────────┐
-│              React Frontend              │
-│                                          │
-│  Trip Form │ Map │ Itinerary │ Logs     │
-└────────────────────┬─────────────────────┘
-                     │
-                     │ POST /api/plan/
-                     ▼
-┌──────────────────────────────────────────┐
-│             Django Backend               │
-│                                          │
-│ API │ Validation │ Routing │ HOS Engine │
-└───────────────┬──────────────┬───────────┘
-                │              │
-                ▼              ▼
-        ┌──────────────┐  ┌──────────────┐
-        │   Nominatim  │  │     OSRM     │
-        │  Geocoding   │  │ Road Routing │
-        └──────────────┘  └──────────────┘
-                │              │
-                └──────┬───────┘
-                       ▼
-              ┌─────────────────┐
-              │  HOS Scheduler  │
-              └────────┬────────┘
-                       │
-              ┌────────┴────────┐
-              ▼                 ▼
-       ┌─────────────┐   ┌─────────────┐
-       │ Daily Logs  │   │  Map Stops  │
-       └─────────────┘   └─────────────┘
++------------------------------------------+
+|              React Frontend              |
+|                                          |
+|  Trip Form | Map | Itinerary | Logs     |
++--------------------+---------------------+
+                     |
+                     | POST /api/plan/
+                     v
++------------------------------------------+
+|             Django Backend               |
+|                                          |
+| API | Validation | Routing | HOS Engine |
++---------------+--------------+-----------+
+                |              |
+                v              v
+        +---------------+  +---------------+
+        |   Nominatim   |  |     OSRM      |
+        |   Geocoding   |  | Road Routing  |
+        +---------------+  +---------------+
+                |              |
+                +------+-------+
+                       |
+                       v
+              +-----------------+
+              |  HOS Scheduler  |
+              +--------+--------+
+                       |
+              +--------+--------+
+              v                 v
+       +-------------+   +-------------+
+       | Daily Logs  |   |  Map Stops  |
+       +-------------+   +-------------+
 
 Technology Stack
 
@@ -326,41 +331,41 @@ Vercel
 Project Structure
 
 hos-trip-planner/
-│
-├── backend/
-│   ├── config/
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   ├── asgi.py
-│   │   └── wsgi.py
-│   │
-│   ├── planner/
-│   │   ├── tests/
-│   │   │   └── test_hos.py
-│   │   ├── hos.py
-│   │   ├── routing.py
-│   │   ├── views.py
-│   │   └── urls.py
-│   │
-│   ├── manage.py
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── frontend/
-│   ├── src/
-│   │   ├── main.jsx
-│   │   └── styles.css
-│   ├── index.html
-│   ├── package.json
-│   ├── package-lock.json
-│   └── vercel.json
-│
-├── docs/
-│   └── HOS_RULES.md
-│
-├── render.yaml
-├── .gitignore
-└── README.md
+|
++-- backend/
+|   +-- config/
+|   |   +-- settings.py
+|   |   +-- urls.py
+|   |   +-- asgi.py
+|   |   +-- wsgi.py
+|   |
+|   +-- planner/
+|   |   +-- tests/
+|   |   |   +-- test_hos.py
+|   |   +-- hos.py
+|   |   +-- routing.py
+|   |   +-- views.py
+|   |   +-- urls.py
+|   |
+|   +-- manage.py
+|   +-- requirements.txt
+|   +-- Dockerfile
+|
++-- frontend/
+|   +-- src/
+|   |   +-- main.jsx
+|   |   +-- styles.css
+|   +-- index.html
+|   +-- package.json
+|   +-- package-lock.json
+|   +-- vercel.json
+|
++-- docs/
+|   +-- HOS_RULES.md
+|
++-- render.yaml
++-- .gitignore
++-- README.md
 
 API
 
@@ -437,7 +442,7 @@ Local Setup
 
 Prerequisites
 
-Install the following:
+Install:
 
 Python 3.x
 
@@ -470,7 +475,7 @@ Windows PowerShell
 
 Windows Command Prompt
 
-.venv\Scripts\activate
+.venv\Scriptsctivate
 
 macOS / Linux
 
@@ -679,7 +684,7 @@ Returns the logs to the frontend.
 
 The frontend displays the schedule using a:
 
-24-hour × 15-minute duty-status grid
+24-hour x 15-minute duty-status grid
 
 The digital logs are an assessment-oriented visualization and are not represented as a certified production ELD/RODS compliance system.
 
@@ -737,7 +742,7 @@ The production build is generated at:
 
 frontend/dist/
 
-☁️ Deployment
+Deployment
 
 Backend — Render
 
