@@ -35,6 +35,9 @@ class Activity:
     location: str
     miles: float = 0.0
     note: str = ""
+    route_miles: float = 0.0
+    latitude: float | None = None
+    longitude: float | None = None
 
     def minutes(self) -> float:
         return (
@@ -90,6 +93,7 @@ def build_schedule(
     current_cycle_hours: float,
     start_dt: datetime,
     fuel_interval_miles: float = 1000.0,
+    position_resolver=None,
 ):
     """
     Create a conservative, explainable HOS schedule.
@@ -198,7 +202,14 @@ def build_schedule(
             0.0,
             14.0 - window_elapsed_hours(),
         )
+    def resolve_position(route_miles):
+        if not position_resolver:
+            return None
 
+        try:
+            return position_resolver(route_miles)
+        except (TypeError, KeyError, ValueError):
+            return None
     # =========================================================================
     # ADD ACTIVITY
     # =========================================================================
@@ -209,6 +220,9 @@ def build_schedule(
         location: str,
         miles: float = 0.0,
         note: str = "",
+        route_miles=None,
+        latitude=None,
+        longitude=None,
     ):
         """
         Add an activity to the chronological schedule.
@@ -240,6 +254,14 @@ def build_schedule(
                 location=location,
                 miles=miles,
                 note=note,
+                route_miles=(
+                  total_distance
+                  if route_miles is None
+                  else route_miles
+                ),
+                latitude=latitude,
+                longitude=longitude,
+
             )
         )
 
@@ -279,10 +301,23 @@ def build_schedule(
         nonlocal drive_since_break
         nonlocal duty_today
 
+        position = resolve_position(total_distance)
+
         add(
             "OFF_DUTY",
             600,
             location,
+            route_miles=total_distance,
+            latitude=(
+                position.get("latitude")
+                if position
+                else None
+            ),
+            longitude=(
+                position.get("longitude")
+                if position
+                else None
+            ),
             note=reason,
         )
 
@@ -327,6 +362,8 @@ def build_schedule(
             2040,  # 34 hours
         )
 
+        position = resolve_position(total_distance)
+
         activities.append(
             Activity(
                 kind="OFF_DUTY",
@@ -335,6 +372,17 @@ def build_schedule(
                 location=location,
                 miles=0.0,
                 note="34-hour cycle restart",
+                route_miles=total_distance,
+                latitude=(
+                    position.get("latitude")
+                    if position
+                    else None
+                ),
+                longitude=(
+                    position.get("longitude")
+                    if position
+                    else None
+                ),
             )
         )
 
@@ -442,10 +490,23 @@ def build_schedule(
                 >= 8.0 - 1e-8
             ):
 
+                position = resolve_position(total_distance)
+
                 add(
                     "OFF_DUTY",
                     30,
                     location,
+                    route_miles=total_distance,
+                    latitude=(
+                       position.get("latitude")
+                       if position
+                       else None
+                    ),
+                    longitude=(
+                       position.get("longitude")
+                       if position
+                       else None
+                    ),
                     note=(
                         "30-minute break after "
                         "8 cumulative driving hours"
@@ -493,10 +554,23 @@ def build_schedule(
                 break_driving_remaining
                 <= 1e-8
             ):
+                position = resolve_position(total_distance)
+
                 add(
                     "OFF_DUTY",
                     30,
                     location,
+                    route_miles=total_distance,
+                    latitude=(
+                        position.get("latitude")
+                        if position
+                        else None
+                    ),
+                    longitude=(
+                        position.get("longitude")
+                        if position
+                        else None
+                    ),
                     note=(
                         "30-minute break after "
                         "8 cumulative driving hours"
@@ -573,12 +647,33 @@ def build_schedule(
                 chunk_miles,
             )
 
+            position = None
+
+            if position_resolver:
+                try:
+                    position = position_resolver(
+                    total_distance + actual_miles
+                     )
+                except (TypeError, KeyError, ValueError):
+                    position = None
+
             add(
                 "DRIVING",
                 minutes,
                 location,
                 miles=actual_miles,
-            )
+                route_miles=total_distance + actual_miles,
+                latitude=(
+                    position.get("latitude")
+                    if position
+                    else None
+                ),
+                longitude=(
+                    position.get("longitude")
+                    if position
+                    else None
+        ),
+)
 
             drive_today += actual_hours
 
@@ -627,11 +722,22 @@ def build_schedule(
                 >= 8.0 - 1e-8
                 and remaining_hours > 1e-8
             ):
-
+                position = resolve_position(total_distance) 
                 add(
                     "OFF_DUTY",
                     30,
                     location,
+                    route_miles=total_distance,
+                    latitude=(
+                        position.get("latitude")
+                        if position
+                        else None
+                    ),
+                    longitude=(
+                        position.get("longitude")
+                        if position
+                        else None
+                    ),
                     note=(
                         "30-minute break after "
                         "8 cumulative driving hours"
@@ -651,6 +757,9 @@ def build_schedule(
         location: str,
         hours: float,
         label: str,
+        route_miles=None,
+        latitude=None,
+        longitude=None,
     ):
         """
         Add an ON_DUTY service activity.
@@ -713,11 +822,38 @@ def build_schedule(
                 minutes = 1
 
             actual_hours = minutes / 60.0
-
+            position = resolve_position(
+                total_distance
+                if route_miles is None
+                else route_miles
+            )
             add(
                 "ON_DUTY",
                 minutes,
                 location,
+                route_miles=(   
+                total_distance
+                if route_miles is None
+                else route_miles
+                ),
+                latitude=(
+                    latitude
+                    if latitude is not None
+                    else(
+                    position.get("latitude")
+                    if position
+                    else None
+                    )
+                ),
+                longitude=(
+                    longitude
+                    if longitude is not None
+                    else(
+                    position.get("longitude")
+                    if position
+                    else None
+                    )
+                ),
                 note=label,
             )
             

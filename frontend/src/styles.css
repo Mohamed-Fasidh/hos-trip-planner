@@ -1981,3 +1981,262 @@ footer {
     border-bottom: 1px solid #111827;
   }
 }
+
+/* =========================================================
+   TURN-BY-TURN ROUTE INSTRUCTIONS
+   Added without changing existing working styles
+   ========================================================= */
+
+.route-instructions {
+  margin-top: 20px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.route-instructions-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.route-instructions-header > div {
+  min-width: 0;
+}
+
+.route-instructions-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
+
+.route-instructions-header p {
+  margin: 7px 0 0;
+  color: #91a1b8;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.route-instructions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.route-instruction {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  padding: 13px 14px;
+  background: #fbfdff;
+  border: 1px solid #e5ebf2;
+  border-radius: 12px;
+  transition: border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.route-instruction:hover {
+  background: #fff;
+  border-color: #cddbf0;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.05);
+}
+
+.route-instruction-number {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.route-instruction-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.route-instruction-content strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 800;
+}
+
+.route-instruction-content span {
+  overflow-wrap: anywhere;
+  color: #7488a3;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.route-instruction-distance {
+  color: var(--blue);
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.route-checkpoint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 5px;
+  color: #617690;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.route-checkpoint svg {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+  color: var(--blue);
+}
+
+.route-checkpoint strong {
+  color: #405570;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.route-checkpoint-location {
+  overflow-wrap: anywhere;
+  color: #7488a3;
+}
+
+.route-mile {
+  color: #8a9bb1;
+  font-size: 9px;
+  line-height: 1.3;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.route-instructions-empty {
+  padding: 18px;
+  color: #7488a3;
+  background: #f8fafc;
+  border: 1px dashed #d7e1ec;
+  border-radius: 11px;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Alternate semantic names supported by the route/checkpoint UI. */
+.turn-by-turn {
+  margin-top: 20px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.turn-by-turn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.turn-by-turn-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 13px;
+  padding: 13px 14px;
+  background: #fbfdff;
+  border: 1px solid #e5ebf2;
+  border-radius: 12px;
+}
+
+.precise-location {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 5px;
+  color: #7488a3;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.precise-location strong {
+  color: #405570;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .route-instructions,
+  .turn-by-turn {
+    padding: 20px;
+  }
+
+  .route-instruction,
+  .turn-by-turn-item {
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .route-instruction-number {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+
+  .route-instruction-distance {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .route-instructions,
+  .turn-by-turn {
+    padding: 16px;
+    border-radius: 15px;
+  }
+
+  .route-instructions-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .route-instructions-header h2 {
+    font-size: 18px;
+  }
+
+  .route-instructions-header p {
+    font-size: 11px;
+  }
+
+  .route-instruction,
+  .turn-by-turn-item {
+    padding: 11px;
+  }
+}
+
+@media print {
+  .route-instructions,
+  .turn-by-turn {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

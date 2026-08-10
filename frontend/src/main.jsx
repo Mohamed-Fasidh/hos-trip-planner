@@ -224,6 +224,200 @@ function MapLegend() {
 }
 
 /* =========================================================
+   TURN-BY-TURN ROUTE INSTRUCTIONS
+   ========================================================= */
+
+function RouteInstructions({ legs, stops, instructions: topLevelInstructions }) {
+  /*
+   * The API currently returns turn-by-turn instructions at the
+   * top level as `data.instructions`. Some backend versions may
+   * also expose them under each route leg. Prefer the top-level
+   * response and fall back to the per-leg structure so the UI
+   * remains compatible with both shapes.
+   */
+  const instructions = Array.isArray(
+    topLevelInstructions
+  )
+    ? topLevelInstructions.map(
+        (instruction, index) => ({
+          ...instruction,
+          legIndex:
+            instruction?.leg_index ?? 0,
+          stepIndex:
+            instruction?.step_index ?? index,
+        })
+      )
+    : (legs || []).flatMap(
+        (leg, legIndex) =>
+          (leg?.instructions || []).map(
+            (instruction, stepIndex) => ({
+              ...instruction,
+              legIndex,
+              stepIndex,
+            })
+          )
+      );
+
+  const checkpointStops = (stops || []).filter(
+    (stop) =>
+      stop?.location === 'Route checkpoint' ||
+      stop?.label === 'Route checkpoint' ||
+      stop?.type === 'FUEL'
+  );
+
+  if (
+    instructions.length === 0 &&
+    checkpointStops.length === 0
+  ) {
+    return null;
+  }
+
+  return (
+    <section className="panel route-instructions">
+      <div className="route-instructions-header">
+        <div>
+          <h2>Turn-by-turn route instructions</h2>
+          <p>
+            Route instructions and precise route-mile
+            checkpoint locations from the generated route.
+          </p>
+        </div>
+      </div>
+
+      {instructions.length > 0 && (
+        <div className="route-instructions-list">
+          {instructions.map((item, index) => (
+            <div
+              className="route-instruction"
+              key={`route-instruction-${item.legIndex}-${item.stepIndex}-${index}`}
+            >
+              <div className="route-instruction-number">
+                {index + 1}
+              </div>
+
+              <div className="route-instruction-content">
+                <strong>
+                  {item.instruction ||
+                    `Continue on ${
+                      item.road_name || 'route'
+                    }`}
+                </strong>
+
+                {item.road_name && (
+                  <span>
+                    Road: {item.road_name}
+                  </span>
+                )}
+
+                <div className="route-checkpoint">
+                  <span>
+                    Route mile:{' '}
+                    <strong>
+                      {Number(
+                        item.route_miles || 0
+                      ).toFixed(1)}
+                    </strong>
+                  </span>
+
+                  {Number.isFinite(
+                    Number(item.latitude)
+                  ) &&
+                    Number.isFinite(
+                      Number(item.longitude)
+                    ) && (
+                      <span className="route-checkpoint-location">
+                        {Number(item.latitude).toFixed(5)}
+                        {', '}
+                        {Number(
+                          item.longitude
+                        ).toFixed(5)}
+                      </span>
+                    )}
+                </div>
+              </div>
+
+              <div className="route-instruction-distance">
+                {Number(
+                  item.distance_miles || 0
+                ).toFixed(1)}{' '}
+                mi
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {checkpointStops.length > 0 && (
+        <div className="route-instructions-list">
+          {checkpointStops.map((stop, index) => (
+            <div
+              className="route-instruction"
+              key={`checkpoint-${stop.start || index}-${index}`}
+            >
+              <div className="route-instruction-number">
+                F
+              </div>
+
+              <div className="route-instruction-content">
+                <strong>
+                  {stop.location_text ||
+                    stop.display ||
+                    'Route checkpoint'}
+                </strong>
+
+                <span>
+                  {stop.road ||
+                    stop.city ||
+                    stop.state
+                    ? [
+                        stop.road,
+                        stop.city,
+                        stop.state,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')
+                    : 'Precise route checkpoint'}
+                </span>
+
+                <div className="route-checkpoint">
+                  <span>
+                    Route mile:{' '}
+                    <strong>
+                      {Number(
+                        stop.route_miles || 0
+                      ).toFixed(1)}
+                    </strong>
+                  </span>
+
+                  {Number.isFinite(
+                    Number(stop.lat)
+                  ) &&
+                    Number.isFinite(
+                      Number(stop.lon)
+                    ) && (
+                      <span className="route-checkpoint-location">
+                        {Number(stop.lat).toFixed(5)}
+                        {', '}
+                        {Number(
+                          stop.lon
+                        ).toFixed(5)}
+                      </span>
+                    )}
+                </div>
+              </div>
+
+              <div className="route-instruction-distance">
+                CHECKPOINT
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* =========================================================
    DAILY LOG SHEET
    ========================================================= */
 
@@ -1090,6 +1284,10 @@ function App() {
 
       const json =
         await response.json();
+        
+      console.log("FULL PLAN RESPONSE:", json);
+      console.log("INSTRUCTIONS:", json.instructions);
+      console.log("INSTRUCTIONS COUNT:", json.instructions?.length);
 
       if (!response.ok) {
         throw new Error(
@@ -1610,7 +1808,8 @@ function App() {
 
                           <br />
 
-                          {stop.display ||
+                          {stop.location_text ||
+                            stop.display ||
                             stop.location}
 
                           {stop.start && (
@@ -1711,6 +1910,14 @@ function App() {
           </section>
 
         </section>
+
+        <RouteInstructions
+          legs={data?.legs || []}
+          stops={stops}
+          instructions={
+            data?.instructions || []
+          }
+        />
 
         {/* =================================================
             RESULTS
@@ -2038,4 +2245,4 @@ createRoot(
   document.getElementById('root')
 ).render(
   <App />
-);
+)

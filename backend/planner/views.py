@@ -115,26 +115,214 @@ def _activity_stop_type(activity):
     return None
 
 
-def _build_schedule_stops(schedule, location_lookup):
+
+def _distance_miles(point_a, point_b):
+    """Approximate distance between two [lon, lat] points in miles."""
+    from math import asin, cos, radians, sin, sqrt
+
+    lon1, lat1 = point_a
+    lon2, lat2 = point_b
+
+    lat1 = radians(float(lat1))
+    lat2 = radians(float(lat2))
+    dlat = lat2 - lat1
+    dlon = radians(float(lon2) - float(lon1))
+
+    value = (
+        sin(dlat / 2) ** 2
+        + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    )
+
+    return 3958.7613 * 2 * asin(
+        min(1.0, sqrt(max(0.0, value)))
+    )
+
+
+def _point_on_route(geometry, target_miles):
+    """
+    Return a [lon, lat] coordinate at target_miles along
+    an OSRM GeoJSON LineString.
+    """
+    if not geometry:
+        return None
+
+    coordinates = geometry.get(
+        "coordinates",
+        geometry,
+    )
+
+    if not isinstance(coordinates, list) or len(coordinates) < 2:
+        return None
+
+    target = max(0.0, float(target_miles))
+    travelled = 0.0
+
+    for index in range(1, len(coordinates)):
+        previous = coordinates[index - 1]
+        current = coordinates[index]
+
+        if (
+            not isinstance(previous, (list, tuple))
+            or not isinstance(current, (list, tuple))
+            or len(previous) < 2
+            or len(current) < 2
+        ):
+            continue
+
+        segment = _distance_miles(
+            previous,
+            current,
+        )
+
+        if travelled + segment >= target:
+            if segment <= 1e-12:
+                return [
+                    float(current[0]),
+                    float(current[1]),
+                ]
+
+            ratio = (
+                target - travelled
+            ) / segment
+
+            ratio = max(
+                0.0,
+                min(1.0, ratio),
+            )
+
+            lon = (
+                float(previous[0])
+                + (
+                    float(current[0])
+                    - float(previous[0])
+                ) * ratio
+            )
+
+            lat = (
+                float(previous[1])
+                + (
+                    float(current[1])
+                    - float(previous[1])
+                ) * ratio
+            )
+
+            return [lon, lat]
+
+        travelled += segment
+
+    last = coordinates[-1]
+
+    if (
+        isinstance(last, (list, tuple))
+        and len(last) >= 2
+    ):
+        return [
+            float(last[0]),
+            float(last[1]),
+        ]
+
+    return None
+
+
+def _build_route_lookup(legs):
+    """
+    Build cumulative-mile ranges for each route leg.
+    """
+    lookup = []
+    cumulative = 0.0
+
+    for leg in legs:
+        distance = max(
+            0.0,
+            float(
+                leg.get(
+                    "distance_miles",
+                    0.0,
+                )
+                or 0.0
+            ),
+        )
+
+        lookup.append(
+            {
+                "start_miles": cumulative,
+                "end_miles": (
+                    cumulative + distance
+                ),
+                "geometry": leg.get(
+                    "geometry"
+                ),
+            }
+        )
+
+        cumulative += distance
+
+    return lookup
+
+
+def _coordinate_for_route_miles(
+    route_lookup,
+    route_miles,
+):
+    """
+    Convert cumulative route miles into a coordinate
+    on the corresponding OSRM route leg.
+    """
+    if not route_lookup:
+        return None
+
+    target = max(
+        0.0,
+        float(route_miles),
+    )
+
+    for leg in route_lookup:
+        if (
+            target
+            <= leg["end_miles"] + 1e-8
+        ):
+            local_miles = max(
+                0.0,
+                target
+                - leg["start_miles"],
+            )
+
+            return _point_on_route(
+                leg["geometry"],
+                local_miles,
+            )
+
+    last = route_lookup[-1]
+
+    return _point_on_route(
+        last["geometry"],
+        max(
+            0.0,
+            last["end_miles"]
+            - last["start_miles"],
+        ),
+    )
+
+
+def _build_schedule_stops(
+    schedule,
+    location_lookup,
+    route_lookup=None,
+):
     """
     Convert HOS activities into map-ready stop objects.
 
-    Only activities that represent meaningful stops are
-    returned.
+    Endpoint activities use their geocoded coordinates.
+    Intermediate activities such as fuel, breaks, resets,
+    and restarts use cumulative route mileage and the
+    actual OSRM route geometry.
 
-    Each stop contains:
-
-        type
-        label
-        location
-        start
-        end
-        lat
-        lon
-        note
-        miles
+    Important:
+    Activity.miles is the distance of that individual
+    driving activity, not cumulative trip mileage. Therefore
+    cumulative route mileage is calculated here by walking
+    through the activities in chronological order.
     """
-
     stops = []
 
     activities = schedule.get(
@@ -142,43 +330,139 @@ def _build_schedule_stops(schedule, location_lookup):
         [],
     )
 
-    for activity in activities:
+    cumulative_route_miles = 0.0
 
+    label_map = {
+        "PICKUP": "Pickup",
+        "DROPOFF": "Drop-off",
+        "FUEL": "Fuel stop",
+        "BREAK_30M": "30-minute break",
+        "REST_10H": "10-hour rest",
+        "RESTART_34H": "34-hour cycle restart",
+        "OFF_DUTY": "Off duty",
+    }
+
+    for activity in activities:
         stop_type = _activity_stop_type(
             activity
         )
 
+        activity_miles = float(
+            activity.get(
+                "miles",
+                0.0,
+            )
+            or 0.0
+        )
+
         if stop_type is None:
+            if str(
+                activity.get(
+                    "kind",
+                    "",
+                )
+            ).upper() == "DRIVING":
+                cumulative_route_miles += max(
+                    0.0,
+                    activity_miles,
+                )
+
             continue
 
         location = str(
-            activity.get("location", "")
+            activity.get(
+                "location",
+                "",
+            )
         ).strip()
 
         location_data = location_lookup.get(
             location.lower()
         )
 
-        # If the scheduler's location isn't one of the
-        # three known route places, don't invent coordinates.
-        if not location_data:
-            continue
+        lat = None
+        lon = None
+        display = location
 
-        lat = location_data.get("lat")
-        lon = location_data.get("lon")
+        # Activity metadata generated by the HOS scheduler is the
+        # canonical source for event position. This keeps the ELD
+        # itinerary, map markers, and daily logs synchronized.
+        activity_route_miles = activity.get(
+            "route_miles"
+        )
 
-        if lat is None or lon is None:
-            continue
+        if activity_route_miles is not None:
+            try:
+                route_miles = float(
+                    activity_route_miles
+                )
+            except (TypeError, ValueError):
+                route_miles = cumulative_route_miles
+        else:
+            route_miles = cumulative_route_miles
 
-        label_map = {
-            "PICKUP": "Pickup",
-            "DROPOFF": "Drop-off",
-            "FUEL": "Fuel stop",
-            "BREAK_30M": "30-minute break",
-            "REST_10H": "10-hour rest",
-            "RESTART_34H": "34-hour cycle restart",
-            "OFF_DUTY": "Off duty",
-        }
+        activity_lat = activity.get(
+            "latitude"
+        )
+        activity_lon = activity.get(
+            "longitude"
+        )
+
+        if (
+            activity_lat is not None
+            and activity_lon is not None
+        ):
+            try:
+                lat = float(activity_lat)
+                lon = float(activity_lon)
+            except (TypeError, ValueError):
+                lat = None
+                lon = None
+
+        # Pickup/drop-off are real geocoded endpoints.
+        # Prefer the scheduler's coordinates when present,
+        # otherwise retain the existing endpoint lookup.
+        if (
+            lat is None
+            or lon is None
+        ) and location_data:
+            lat = location_data.get("lat")
+            lon = location_data.get("lon")
+            display = location_data.get(
+                "display",
+                location,
+            )
+
+        # Intermediate HOS events should already contain their
+        # route position from the scheduler. Use OSRM geometry
+        # only as a backward-compatible fallback.
+        if (
+            lat is None
+            or lon is None
+        ):
+            coordinate = (
+                _coordinate_for_route_miles(
+                    route_lookup or [],
+                    route_miles,
+                )
+            )
+
+            if coordinate is None:
+                # Do not create a fake map coordinate.
+                # The HOS activity remains available in
+                # the schedule/ELD itinerary.
+                continue
+
+            lon, lat = coordinate
+
+        if (
+            location.lower()
+            == "route checkpoint"
+        ):
+            display = (
+                f"Route checkpoint "
+                f"({route_miles:.1f} mi)"
+            )
 
         stops.append(
             {
@@ -188,10 +472,7 @@ def _build_schedule_stops(schedule, location_lookup):
                     stop_type,
                 ),
                 "location": location,
-                "display": location_data.get(
-                    "display",
-                    location,
-                ),
+                "display": display,
                 "start": activity.get(
                     "start"
                 ),
@@ -204,14 +485,28 @@ def _build_schedule_stops(schedule, location_lookup):
                     "note",
                     "",
                 ),
-                "miles": float(
-                    activity.get(
-                        "miles",
-                        0,
-                    ) or 0
-                ),
+                # Preserve the activity's own
+                # mileage for compatibility.
+                "miles": activity_miles,
+                # Explicit cumulative mileage used
+                # for intermediate map placement.
+                "route_miles": route_miles,
             }
         )
+
+        # A stop normally has zero miles, but this keeps
+        # cumulative mileage correct if a future service
+        # activity carries distance.
+        if str(
+            activity.get(
+                "kind",
+                "",
+            )
+        ).upper() == "DRIVING":
+            cumulative_route_miles += max(
+                0.0,
+                activity_miles,
+            )
 
     return stops
 
@@ -363,6 +658,14 @@ def plan_trip(request):
                         "geometry"
                     ],
 
+                    # Expose the existing OSRM turn-by-turn
+                    # instructions to the frontend.
+                    # No routing/HOS parameters are changed.
+                    "instructions": route.get(
+                        "instructions",
+                        []
+                    ),
+
                     "is_pickup": (
                         i == 0
                     ),
@@ -374,14 +677,28 @@ def plan_trip(request):
             )
 
         # -------------------------------------------------
-        # Build HOS schedule
+        # Flatten turn-by-turn instructions from both legs
         # -------------------------------------------------
 
-        schedule = build_schedule(
-            legs,
-            cycle,
-            start,
-        )
+        instructions = []
+
+        for leg_index, leg in enumerate(legs):
+            leg_instructions = leg.get(
+                "instructions",
+                []
+            )
+
+            for instruction in leg_instructions:
+                if not isinstance(instruction, dict):
+                    continue
+
+                item = dict(instruction)
+
+                # Preserve which logical trip leg this
+                # instruction belongs to.
+                item["leg_index"] = leg_index
+
+                instructions.append(item)
 
         # -------------------------------------------------
         # Build location lookup
@@ -395,6 +712,45 @@ def plan_trip(request):
         )
 
         # -------------------------------------------------
+        # Build route lookup
+        # -------------------------------------------------
+
+        route_lookup = _build_route_lookup(
+            legs
+        )
+
+        # -------------------------------------------------
+        # Resolve HOS activity positions on the route
+        # -------------------------------------------------
+
+        def position_resolver(route_miles):
+            coordinate = _coordinate_for_route_miles(
+                route_lookup,
+                route_miles,
+            )
+
+            if coordinate is None:
+                return None
+
+            lon, lat = coordinate
+
+            return {
+                "latitude": lat,
+                "longitude": lon,
+            }
+
+        # -------------------------------------------------
+        # Build HOS schedule
+        # -------------------------------------------------
+
+        schedule = build_schedule(
+            legs,
+            cycle,
+            start,
+            position_resolver=position_resolver,
+        )
+
+        # -------------------------------------------------
         # Build map-ready HOS stops
         # -------------------------------------------------
 
@@ -402,6 +758,7 @@ def plan_trip(request):
             _build_schedule_stops(
                 schedule,
                 location_lookup,
+                route_lookup,
             )
         )
 
@@ -494,6 +851,10 @@ def plan_trip(request):
                 "places": places,
 
                 "legs": legs,
+
+                # Flattened turn-by-turn route instructions
+                # from both route legs for the frontend.
+                "instructions": instructions,
 
                 "schedule": schedule,
 
