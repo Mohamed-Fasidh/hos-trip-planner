@@ -1274,6 +1274,8 @@ https://hos-trip-planner-ojv2.onrender.com/api/health/
 
 The hosted frontend communicates with the deployed Django backend through the production VITE_API_URL configuration.
 
+---
+
 ## License
 
 This project was developed for the Full Stack Developer HOS Trip Planner assessment.
