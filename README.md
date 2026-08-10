@@ -1265,10 +1265,13 @@ The primary goals of the project are:
 
 Hosted Application
 https://hos-trip-planner-gamma.vercel.app
+
 Backend API
 https://hos-trip-planner-ojv2.onrender.com
+
 Backend Health Check
 https://hos-trip-planner-ojv2.onrender.com/api/health/
+
 The hosted frontend communicates with the deployed Django backend through the production VITE_API_URL configuration.
 
 License
