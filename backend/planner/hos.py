@@ -13,7 +13,7 @@ from typing import List
 # 70 hours / 8 days
 # No adverse driving conditions
 # Fueling no less often than every 1,000 route miles
-# 1000-mile internal safety buffer
+# 1,000-mile assessment maximum interval
 # 1 hour pickup
 # 1 hour drop-off
 #
