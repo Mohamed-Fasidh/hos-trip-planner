@@ -403,7 +403,7 @@ Pickup service time is inserted between the two route legs.
 ### Clone the Repository
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone https://github.com/Mohamed-Fasidh/hos-trip-planner
 cd hos-trip-planner
 ```
 
@@ -905,7 +905,7 @@ dist
 ### Environment Variable
 
 ```dotenv
-VITE_API_URL=<DEPLOYED_BACKEND_URL>
+VITE_API_URL= https://hos-trip-planner-ojv2.onrender.com
 ```
 
 ---
@@ -923,7 +923,7 @@ VITE_API_URL=http://localhost:8000
 Production:
 
 ```dotenv
-VITE_API_URL=<DEPLOYED_BACKEND_URL>
+VITE_API_URL= https://hos-trip-planner-ojv2.onrender.com
 ```
 
 Backend environment variables depend on the deployment configuration.
@@ -1261,8 +1261,17 @@ The primary goals of the project are:
 
 ---
 
-## License
+## Live Assessment Links
 
+Hosted Application
+https://hos-trip-planner-gamma.vercel.app
+Backend API
+https://hos-trip-planner-ojv2.onrender.com
+Backend Health Check
+https://hos-trip-planner-ojv2.onrender.com/api/health/
+The hosted frontend communicates with the deployed Django backend through the production VITE_API_URL configuration.
+
+License
 This project was developed for the Full Stack Developer HOS Trip Planner assessment.
 
 It should be used according to the requirements and terms associated with the assessment.
