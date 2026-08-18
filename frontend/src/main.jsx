@@ -151,9 +151,9 @@ function fmtHours(hours) {
 function fmtDate(value) {
   if (!value) return '';
 
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
+  const date = parseLogDateTime(value);
+  
+  if (!date) {
     return String(value);
   }
 

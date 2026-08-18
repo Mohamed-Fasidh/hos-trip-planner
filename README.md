@@ -1136,7 +1136,7 @@ The implementation includes automated tests covering the primary assessment requ
 | Digital RODS-style sheet | Implemented |
 | Route visualization | Implemented |
 | Print/PDF | Implemented |
-| Automated tests | **200 unique tests** |
+| Automated tests | **200 scenarios and invariants** |
 
 ---
 ## Future Improvements

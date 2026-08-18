@@ -129,16 +129,47 @@ def reverse_geocode(
     data = response.json()
     address = data.get("address") or {}
 
-    city = (
-        address.get("city")
-        or address.get("town")
-        or address.get("village")
-        or address.get("municipality")
-        or address.get("county")
+    # -------------------------------------------------------------------------
+    # Prefer a real city/town/village/municipality.
+    #
+    # Do NOT use county or township as the primary city because HOS Remarks
+    # should identify a usable city/town/village location whenever possible.
+    # -------------------------------------------------------------------------
+
+    place_candidates = [
+        address.get("city"),
+        address.get("town"),
+        address.get("village"),
+        address.get("municipality"),
+        address.get("borough"),
+    ]
+
+    city = ""
+
+    for candidate in place_candidates:
+        candidate = (candidate or "").strip()
+
+        if not candidate:
+            continue
+
+        normalized = candidate.lower()
+
+        # Reject administrative areas that are not useful as the
+        # primary HOS city/town remark.
+        if (
+            normalized.endswith(" township")
+            or normalized.endswith(" county")
+            or normalized.endswith(" parish")
+        ):
+            continue
+
+        city = candidate
+        break
+
+    state = (
+        address.get("state")
         or ""
     )
-
-    state = address.get("state") or ""
 
     road = (
         address.get("road")
@@ -154,6 +185,97 @@ def reverse_geocode(
         "road": road,
         "city": city,
         "state": state,
+    }
+
+
+def location_at_route_miles(route, route_miles):
+    """
+    Convert a route-mile position into a human-readable
+    city/state location for HOS remarks.
+    """
+
+    position = position_at_route_miles(
+        route,
+        route_miles,
+    )
+
+    if not position:
+        return {
+            "display": "Unknown location",
+            "city": "",
+            "state": "",
+            "road": "",
+        }
+
+    latitude = position["latitude"]
+    longitude = position["longitude"]
+
+    try:
+        location = reverse_geocode(
+            latitude,
+            longitude,
+        )
+    except Exception:
+        return {
+            "display": "Unknown location",
+            "city": "",
+            "state": "",
+            "road": "",
+        }
+
+    city = location.get(
+        "city",
+        "",
+    ).strip()
+
+    state = location.get(
+        "state",
+        "",
+    ).strip()
+
+    road = location.get(
+        "road",
+        "",
+    ).strip()
+
+    # -------------------------------------------------------------------------
+    # Build a concise HOS-friendly location.
+    #
+    # Priority:
+    #   1. City + state
+    #   2. City
+    #   3. Road + state
+    #   4. Road
+    #   5. State
+    #   6. Generic route location
+    # -------------------------------------------------------------------------
+
+    if city and state:
+        display = f"{city}, {state}"
+
+    elif city:
+        display = city
+
+    elif road and state:
+        display = f"Near {road}, {state}"
+
+    elif road:
+        display = f"Near {road}"
+
+    elif state:
+        display = state
+
+    else:
+        display = "Route location"
+
+    return {
+        "display": display,
+        "city": city,
+        "state": state,
+        "road": road,
+        "latitude": latitude,
+        "longitude": longitude,
+        "route_miles": route_miles,
     }
 
 

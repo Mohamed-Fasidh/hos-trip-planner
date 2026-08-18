@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import List
+from .routing import reverse_geocode
 
 
 # =============================================================================
@@ -209,7 +210,41 @@ def build_schedule(
         try:
             return position_resolver(route_miles)
         except (TypeError, KeyError, ValueError):
-            return None
+            return 
+
+    def resolve_location(route_miles, fallback="Route location"):
+        position = resolve_position(route_miles)
+        if not position:
+            return fallback
+        latitude = position.get("latitude")
+        longitude = position.get("longitude")
+
+        if latitude is None or longitude is None:
+            return fallback
+        try:
+            result = reverse_geocode(
+            float(latitude),
+            float(longitude),
+            )
+        except Exception:
+            return fallback
+
+        city = (result.get("city") or "").strip()
+        state = (result.get("state") or "").strip()
+        road = (result.get("road") or "").strip()
+
+        if city and state:
+            return f"{city}, {state}"
+        if city:
+            return city
+        if road and state:
+            return f"Near {road}, {state}"
+        if state:
+            return state
+        if road:
+            return f"Near {road}"
+
+        return fallback
     # =========================================================================
     # ADD ACTIVITY
     # =========================================================================
@@ -302,11 +337,14 @@ def build_schedule(
         nonlocal duty_today
 
         position = resolve_position(total_distance)
-
+        resolved_location = resolve_location(
+            total_distance,
+            fallback=location,
+  )
         add(
             "OFF_DUTY",
             600,
-            location,
+            resolved_location,
             route_miles=total_distance,
             latitude=(
                 position.get("latitude")
@@ -363,13 +401,16 @@ def build_schedule(
         )
 
         position = resolve_position(total_distance)
-
+        resolved_location = resolve_location(
+           total_distance,
+           fallback=location,
+     )
         activities.append(
             Activity(
                 kind="OFF_DUTY",
                 start=start,
                 end=end,
-                location=location,
+                location=resolved_location,
                 miles=0.0,
                 note="34-hour cycle restart",
                 route_miles=total_distance,
@@ -491,11 +532,14 @@ def build_schedule(
             ):
 
                 position = resolve_position(total_distance)
-
+                break_location = resolve_location(
+                total_distance,
+                fallback=location,
+  )
                 add(
                     "OFF_DUTY",
                     30,
-                    location,
+                    break_location,
                     route_miles=total_distance,
                     latitude=(
                        position.get("latitude")
@@ -555,11 +599,14 @@ def build_schedule(
                 <= 1e-8
             ):
                 position = resolve_position(total_distance)
-
+                break_location = resolve_location(
+                  total_distance,
+                  fallback=location,
+                )
                 add(
                     "OFF_DUTY",
                     30,
-                    location,
+                    break_location,
                     route_miles=total_distance,
                     latitude=(
                         position.get("latitude")
@@ -656,11 +703,15 @@ def build_schedule(
                      )
                 except (TypeError, KeyError, ValueError):
                     position = None
+            resolved_location = resolve_location(
+               total_distance,
+               fallback=location,
+            )
 
             add(
                 "DRIVING",
                 minutes,
-                location,
+                resolved_location,
                 miles=actual_miles,
                 route_miles=total_distance + actual_miles,
                 latitude=(
@@ -723,10 +774,14 @@ def build_schedule(
                 and remaining_hours > 1e-8
             ):
                 position = resolve_position(total_distance) 
+                break_location = resolve_location(
+                  total_distance,
+                  fallback=location,
+   )
                 add(
                     "OFF_DUTY",
                     30,
-                    location,
+                    break_location,
                     route_miles=total_distance,
                     latitude=(
                         position.get("latitude")
@@ -945,11 +1000,17 @@ def build_schedule(
                 >= fuel_interval_miles - 1e-8
             ):
 
+                fuel_location = resolve_location(
+                  total_distance,
+                  fallback="Route checkpoint",
+                  )
+
                 service_stop(
-                    "Route checkpoint",
-                    0.5,
-                    "Fuel stop — 1000 route-mile checkpoint",
-                )
+                   fuel_location,
+                   0.5,
+                   "Fuel stop — 1000 route-mile checkpoint",
+                   route_miles=total_distance,
+                  )
 
                 fuel_since = 0.0
 
@@ -971,11 +1032,15 @@ def build_schedule(
             )
 
             if chunk_dist <= 1e-8:
-
+                fuel_location = resolve_location(
+                 total_distance,
+                 fallback="Route checkpoint",
+                )
                 service_stop(
-                    "Route checkpoint",
+                    fuel_location,
                     0.5,
-                "Fuel stop — 1000 route-mile checkpoint",
+                    "Fuel stop — 1000 route-mile checkpoint",
+                    route_miles=total_distance,
                 )
 
                 fuel_since = 0.0
@@ -1015,10 +1080,13 @@ def build_schedule(
             # ---------------------------------------------------------------
             # Drive safely.
             # ---------------------------------------------------------------
-
+            driving_location = resolve_location(
+                total_distance + chunk_dist,
+                fallback=start_name,
+  )
             drive_hours(
                 chunk_hours,
-                start_name,
+                driving_location,
                 chunk_dist,
             )
 
@@ -1083,11 +1151,16 @@ def build_schedule(
                 >= fuel_interval_miles - 1e-6
                 and left_dist > 1e-7
             ):
-
+                fuel_location = resolve_location(
+                    total_distance,
+                    fallback="Route checkpoint",
+                    )
                 service_stop(
-                    "Route checkpoint",
+                    fuel_location,
                     0.5,
                     "Fuel stop — 1000 route-mile checkpoint",
+                    route_miles=total_distance,
+
                 )
 
                 fuel_since = 0.0
