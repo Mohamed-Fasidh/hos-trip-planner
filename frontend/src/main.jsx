@@ -1,4 +1,9 @@
+
+
+
 import React, { useEffect, useMemo, useState } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { createRoot } from 'react-dom/client';
 import {
   MapContainer,
@@ -467,6 +472,160 @@ function normalizeActivityLocations(
   });
 }
 
+async function exportFmcsaLogToPdf(logCard, index, dateValue) {
+  if (!logCard) {
+    throw new Error('Daily log sheet was not found.');
+  }
+
+  const sourceSheet = logCard.querySelector('.fmcsa-sheet');
+
+  if (!sourceSheet) {
+    throw new Error('FMCSA daily log sheet was not found.');
+  }
+
+  /*
+   * Build a clean capture copy at a fixed landscape width, but DO NOT
+   * force a fixed height. The previous exporter used height: 816px and
+   * overflow: hidden, which clipped the lower FMCSA sections (remarks,
+   * shipping documents, recap, and certification).
+   */
+  const captureWidth = 1056;
+
+  const captureHost = document.createElement('div');
+  captureHost.style.cssText = `
+    position: fixed !important;
+    left: -12000px !important;
+    top: 0 !important;
+    width: ${captureWidth}px !important;
+    min-height: 1px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    z-index: -9999 !important;
+    pointer-events: none !important;
+  `;
+
+  const clonedSheet = sourceSheet.cloneNode(true);
+
+  clonedSheet.style.cssText = `
+    width: ${captureWidth}px !important;
+    min-width: ${captureWidth}px !important;
+    max-width: ${captureWidth}px !important;
+
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+
+    margin: 0 !important;
+    padding: 24px !important;
+    box-sizing: border-box !important;
+
+    transform: none !important;
+    rotate: none !important;
+    scale: 1 !important;
+
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+
+    overflow: visible !important;
+    background: #ffffff !important;
+  `;
+
+  const disclaimer = clonedSheet.querySelector('.fmcsa-disclaimer');
+  if (disclaimer) {
+    disclaimer.style.display = 'none';
+  }
+
+  captureHost.appendChild(clonedSheet);
+  document.body.appendChild(captureHost);
+
+  try {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    // Allow the browser to calculate the complete natural height.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const captureHeight = Math.ceil(
+      Math.max(
+        clonedSheet.scrollHeight,
+        clonedSheet.getBoundingClientRect().height
+      )
+    );
+
+    if (!captureHeight || captureHeight < 100) {
+      throw new Error('FMCSA daily log has no printable content.');
+    }
+
+    /*
+     * Capture the FULL sheet height. This is the critical fix: the
+     * previous exporter hard-coded 816px and clipped everything below
+     * the first part of Remarks.
+     */
+    const canvas = await html2canvas(clonedSheet, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: false,
+      logging: false,
+      width: captureWidth,
+      height: captureHeight,
+      windowWidth: captureWidth,
+      windowHeight: captureHeight,
+      scrollX: 0,
+      scrollY: 0,
+    });
+
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'letter',
+      compress: true,
+    });
+
+    const pageWidth = 279.4;
+    const pageHeight = 215.9;
+    const margin = 3;
+    const availableWidth = pageWidth - margin * 2;
+    const availableHeight = pageHeight - margin * 2;
+    const imageRatio = canvas.width / canvas.height;
+
+    let imageWidth = availableWidth;
+    let imageHeight = imageWidth / imageRatio;
+
+    if (imageHeight > availableHeight) {
+      imageHeight = availableHeight;
+      imageWidth = imageHeight * imageRatio;
+    }
+
+    const x = (pageWidth - imageWidth) / 2;
+    const y = (pageHeight - imageHeight) / 2;
+
+    pdf.addImage(
+      canvas.toDataURL('image/jpeg', 0.95),
+      'JPEG',
+      x,
+      y,
+      imageWidth,
+      imageHeight,
+      undefined,
+      'FAST'
+    );
+
+    const safeDate = String(dateValue || 'log')
+      .replace(/[^0-9A-Za-z_-]+/g, '_');
+
+    pdf.save(`FMCSA_Daily_Log_Day_${index + 1}_${safeDate}.pdf`);
+  } finally {
+    captureHost.remove();
+  }
+}
+
 function LogSheet({
   day,
   index,
@@ -800,20 +959,27 @@ const activities = normalizeActivityLocations(
         <button
           type="button"
           className="ghost"
-          onClick={() => {
-            document.body.classList.add(
-              "printing-log"
-            );
+          onClick={async (event) => {
+            const button = event.currentTarget;
+            const logCard = button.closest('.fmcsa-log-card');
 
-            window.setTimeout(() => {
-              window.print();
+            button.disabled = true;
 
-              window.setTimeout(() => {
-                document.body.classList.remove(
-                  "printing-log"
-                );
-              }, 100);
-            }, 0);
+            try {
+              await exportFmcsaLogToPdf(
+                logCard,
+                index,
+                day.date
+              );
+            } catch (err) {
+              console.error('FMCSA PDF export failed:', err);
+              alert(
+                err?.message ||
+                  'Unable to create the FMCSA daily-log PDF.'
+              );
+            } finally {
+              button.disabled = false;
+            }
           }}
         >
           <Download size={15} />
@@ -2180,16 +2346,16 @@ function App() {
 
               </div>
 
-              <LogSheet
-                day={
-                  data.schedule
-                    ?.days?.[
-                    openDay
-                  ]
-                }
-                index={openDay}
-                input={form}
-              />
+              {(
+  data.schedule?.days || []
+).map((day, index) => (
+  <LogSheet
+    key={day.date || index}
+    day={day}
+    index={index}
+    input={form}
+  />
+))}
 
             </section>
 

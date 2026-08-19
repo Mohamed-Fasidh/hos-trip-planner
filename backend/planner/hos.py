@@ -911,7 +911,8 @@ def build_schedule(
                 ),
                 note=label,
             )
-            
+            if actual_hours >= 0.5:
+                drive_since_break = 0.0
 
             remaining -= actual_hours
 

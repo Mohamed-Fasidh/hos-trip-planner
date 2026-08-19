@@ -1137,60 +1137,6 @@ footer {
    PRINT
    ========================================================= */
 
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 10mm;
-  }
-
-  body {
-    background: #fff;
-  }
-
-  .topbar,
-  .hero,
-  .planner-grid,
-  .metrics,
-  .itinerary,
-  .day-tabs,
-  .source-note,
-  footer,
-  .log-head .ghost {
-    display: none !important;
-  }
-
-  main {
-    width: 100%;
-    margin: 0;
-    padding: 0;
-  }
-
-  .logs {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    box-shadow: none;
-  }
-
-  .logs > .panel-title {
-    display: none;
-  }
-
-  .log-card {
-    border: 0;
-    box-shadow: none;
-  }
-
-  .log-head {
-    padding: 0 0 8px;
-    border: 0;
-  }
-
-  .log-svg {
-    width: 100%;
-    max-width: 540px;
-  }
-}
 
 /* =========================================================
    RESPONSIVE
@@ -1877,15 +1823,44 @@ footer {
 }
 
 @media print {
-  body.printing-log {
-    background: #fff;
+
+  /* =========================================================
+     FMCSA DAILY LOG PRINT
+     One complete daily log per printed page.
+
+     The sheet uses CSS zoom so Chrome calculates the scaled
+     print height correctly. The scale is increased from the
+     previous 0.62 setting so the log is easier to read while
+     still fitting on one US Letter landscape page.
+     ========================================================= */
+
+  @page {
+    size: Letter landscape;
+    margin: 0;
   }
 
+  html,
+  body {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body.printing-log {
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  /* Print ONLY the FMCSA daily-log sheets. */
   body.printing-log .topbar,
   body.printing-log .hero,
   body.printing-log .planner-grid,
   body.printing-log .metrics,
   body.printing-log .itinerary,
+  body.printing-log .route-instructions,
+  body.printing-log .turn-by-turn,
   body.printing-log .source-note,
   body.printing-log footer,
   body.printing-log .logs > .panel-title,
@@ -1895,38 +1870,103 @@ footer {
   }
 
   body.printing-log main {
-    width: 100%;
-    margin: 0;
-    padding: 0;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  body.printing-log .logs,
-  body.printing-log .log-card {
-    display: block !important;
+  body.printing-log .logs {
+    width: 100% !important;
+    max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
+    border-radius: 0 !important;
     box-shadow: none !important;
+    background: #fff !important;
   }
 
+  /* Each .log-card is one printed page. */
+  body.printing-log .log-card {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.printing-log .log-card + .log-card {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  /*
+   * US Letter landscape printable area: 11 x 8.5 inches.
+   *
+   * Previous version:
+   *   zoom: 0.62;
+   *   width: 161.2903226%;
+   *
+   * Updated version:
+   *   zoom: 0.82;
+   *   width: 121.9512195%;
+   *
+   * This keeps the sheet approximately full-width while making
+   * the complete FMCSA log substantially larger and more readable.
+   */
   body.printing-log .fmcsa-sheet {
-    width: 100%;
-    border: 1px solid #111827;
+    display: block !important;
+    box-sizing: border-box !important;
+
+    zoom: 0.82;
+    width: 121.9512195% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid #111827 !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Keep every FMCSA section together. */
+  body.printing-log .fmcsa-header,
+  body.printing-log .fmcsa-trip-fields,
+  body.printing-log .fmcsa-graph-section,
+  body.printing-log .fmcsa-totals,
+  body.printing-log .fmcsa-remarks-section,
+  body.printing-log .fmcsa-document-fields,
+  body.printing-log .fmcsa-recap,
+  body.printing-log .fmcsa-signatures,
+  body.printing-log .fmcsa-disclaimer {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Preserve the complete 24-hour graph. */
+  body.printing-log .fmcsa-graph,
+  body.printing-log .fmcsa-grid {
+    overflow: hidden !important;
   }
 
   body.printing-log .fmcsa-duty-segment,
   body.printing-log .fmcsa-time-tick,
   body.printing-log .fmcsa-horizontal-line {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    
-  }
-
-  @page {
-    size: landscape;
-    margin: 7mm;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
+
 
 @media (max-width: 850px) {
   .fmcsa-header {
